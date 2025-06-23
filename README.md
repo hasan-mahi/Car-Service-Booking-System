@@ -68,6 +68,6 @@ Light Theme	Dark Theme
 
 
 🙋‍♂️ Author
-Hasan Uddin
-🔗 [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/in/https://www.linkedin.com/in/mh-uddin/) 
+Hasan Mahi
+🔗 https://www.linkedin.com/in/mh-uddin/
 
