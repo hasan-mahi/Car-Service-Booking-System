@@ -1,86 +1,37 @@
-// src/App.jsx
+// App.jsx or MainLayout.jsx
 import React from "react";
-import { AnimatePresence } from "framer-motion";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
+import Layout from "./components/Layout";
 import Home from "./pages/Home";
+import Services from "./pages/Service";
 
-// Page Wrappers with transitions
-import { motion } from "framer-motion";
+function App({ mode, toggleTheme }) {
+  const [isPageScrollable, setIsPageScrollable] = React.useState(false);
 
-const PageWrapper = ({ children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.4 }}
-    style={{ padding: "2rem", textAlign: "center" }}
-  >
-    {children}
-  </motion.div>
-);
+React.useEffect(() => {
+  function checkScroll() {
+    setIsPageScrollable(document.documentElement.scrollHeight > window.innerHeight);
+  }
+  checkScroll();
 
-function AnimatedRoutes() {
-  const location = useLocation();
+  window.addEventListener("resize", checkScroll);
+  return () => window.removeEventListener("resize", checkScroll);
+}, [location]); // if using react-router `location` to detect page changes
+
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route
-          path="/"
-          element={
-            <PageWrapper>
-              <Home />
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/services"
-          element={
-            <PageWrapper>
-              <h1>Our Services</h1>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/bookings"
-          element={
-            <PageWrapper>
-              <h1>Your Bookings</h1>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/contact"
-          element={
-            <PageWrapper>
-              <h1>Contact Us</h1>
-            </PageWrapper>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PageWrapper>
-              <h1>Login Page</h1>
-            </PageWrapper>
-          }
-        />
-      </Routes>
-    </AnimatePresence>
+    <>
+      <Navbar mode={mode} toggleTheme={toggleTheme} isPageScrollable={isPageScrollable} />
+      <Layout isPageScrollable={isPageScrollable}>
+         <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/services" element={<Services />} />
+          {/* other routes */}
+        </Routes>
+      </Layout>
+    </>
   );
 }
 
-export default function App({ toggleTheme }) {
-  return (
-    <Router>
-      <Navbar toggleTheme={toggleTheme} />
-      <AnimatedRoutes />
-    </Router>
-  );
-}
+export default App;

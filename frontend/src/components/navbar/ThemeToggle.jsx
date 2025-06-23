@@ -1,15 +1,13 @@
+// components/ThemeToggle.jsx
 import React from 'react';
-import { IconButton, useTheme } from '@mui/material';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { IconButton } from '@mui/material';
+import Brightness4Icon from '@mui/icons-material/Brightness4'; // moon
+import Brightness7Icon from '@mui/icons-material/Brightness7'; // sun
 
-export default function ThemeToggle({ toggleTheme }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-
+export default function ThemeToggle({ mode, toggleTheme }) {
   return (
-    <IconButton color="inherit" onClick={toggleTheme} aria-label="toggle theme">
-      {isDark ? <LightModeIcon /> : <DarkModeIcon />}
+    <IconButton onClick={toggleTheme} color="inherit">
+      {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
     </IconButton>
   );
 }

@@ -8,18 +8,18 @@ import BookingSection from "../components/home/BookingSection";
 
 export default function Home() {
   return (
-        <motion.div
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.5 }}
     >
-    <Box>
-      <HeroSection />
-      <Testimonials />
-      <ServiceGallery />
-      <BookingSection />
-    </Box>
+      <Box>
+        <HeroSection />
+        <Testimonials />
+        <ServiceGallery />
+        <BookingSection />
+      </Box>
     </motion.div>
   );
 }
