@@ -28,26 +28,6 @@ A responsive, theme-aware web application for car repair services built with **R
 
 ---
 
-## 📁 Folder Structure
-
-frontend/
-│
-├── public/ # Static assets
-├── src/
-│ ├── components/
-│ │ ├── navbar/ # Navbar, ThemeToggle, Drawer
-│ │ ├── ... # Other reusable components
-│ ├── js/ # Custom hooks (e.g. useScrollDirection)
-│ ├── pages/ # Page components (Home, Services, Contact...)
-│ ├── App.jsx # Main app routing logic
-│ └── main.jsx # Vite entry point
-│
-├── index.html # Root HTML file
-├── package.json # Project metadata and scripts
-└── vite.config.js # Vite configuration
-
----
-
 ## 🚀 Getting Started
 
 ### 1. Clone the Repository
@@ -81,19 +61,13 @@ Light Theme	Dark Theme
 
 📌 Future Enhancements
 ✅ Add backend integration (Node.js / Laravel / Firebase)
-
 ✅ Booking submission with API
-
 ✅ Admin dashboard
-
 ✅ Email confirmations
-
 ✅ User authentication system
 
-📄 License
-This project is licensed under the MIT License.
 
 🙋‍♂️ Author
 Hasan Uddin
-🔗 LinkedIn 
+🔗 [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/in/https://www.linkedin.com/in/mh-uddin/) 
 
