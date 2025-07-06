@@ -23,6 +23,7 @@ const pages = [
   { name: "Home", path: "/" },
   { name: "Services", path: "/services" },
   { name: "Bookings", path: "/bookings" },
+  { name: "Vehicles", path: "/vehicles" },
   { name: "Contact", path: "/contact" },
 ];
 
