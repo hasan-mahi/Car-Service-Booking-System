@@ -1,87 +1,152 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const db = require("../db/index");
+
+const getCurrentTime = () => new Date(); // Uses server's local time or UTC depending on Node config
 
 const vehicleController = {
   async getAll(req, res) {
     try {
-      const vehicles = await prisma.vehicle.findMany({
-        orderBy: { id: "desc" },
-      });
-      res.json(vehicles);
+      const result = await db.query(
+        "SELECT * FROM vehicle WHERE deleted_at IS NULL ORDER BY id DESC"
+      );
+      res.json(result.rows);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching vehicles:", error);
       res.status(500).json({ error: "Failed to fetch vehicles" });
     }
   },
 
   async getById(req, res) {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
+
     try {
-      const vehicle = await prisma.vehicle.findUnique({ where: { id } });
-      if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
-      res.json(vehicle);
+      const result = await db.query(
+        "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+
+      res.json(result.rows[0]);
     } catch (error) {
-      console.error(error);
-      res.status(400).json({ error: "Invalid vehicle ID" });
+      console.error("Error fetching vehicle:", error);
+      res.status(500).json({ error: "Server error" });
     }
   },
 
-async create(req, res) {
-  const { make, model, year, licensePlate } = req.body;
+  async create(req, res) {
+    const { make, model, year, license_plate } = req.body;
 
-  if (
-    !make || !model || !year || !licensePlate ||
-    typeof make !== "string" ||
-    typeof model !== "string" ||
-    typeof licensePlate !== "string" ||
-    typeof year !== "number"
-  ) {
-    return res.status(400).json({ error: "Invalid or missing fields" });
-  }
+    if (
+      !make || !model || ! license_plate || !year ||
+      typeof make !== "string" ||
+      typeof model !== "string" ||
+      typeof  license_plate !== "string" ||
+      typeof year !== "number"
+    ) {
+      return res.status(400).json({ error: "Invalid or missing fields" });
+    }
 
-  try {
-    const vehicle = await prisma.vehicle.create({
-      data: { make, model, year, licensePlate },
-    });
-    res.status(201).json(vehicle);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: "Duplicate license plate or other DB error" });
-  }
-},
+    try {
+      const now = getCurrentTime();
+
+      const insertQuery = `
+        INSERT INTO vehicle (make, model, year, license_plate, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `;
+
+      const values = [make.trim(), model.trim(), year,  license_plate.trim(), now, now];
+
+      const result = await db.query(insertQuery, values);
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error creating vehicle:", error);
+
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Duplicate license plate" });
+      }
+
+      res.status(500).json({ error: "Failed to save vehicle" });
+    }
+  },
 
   async update(req, res) {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    const { make, model, year,  license_plate } = req.body;
+
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
+
+    if (
+      !make || !model || ! license_plate || !year ||
+      typeof make !== "string" ||
+      typeof model !== "string" ||
+      typeof  license_plate !== "string" ||
+      typeof year !== "number"
+    ) {
+      return res.status(400).json({ error: "Invalid or missing fields" });
+    }
+
     try {
-      const { make, model, year, licensePlate } = req.body;
-      const vehicle = await prisma.vehicle.update({
-        where: { id },
-        data: { make, model, year, licensePlate },
-      });
-      res.json(vehicle);
-    } catch (error) {
-      console.error(error);
-      if (error.code === "P2025") {
-        // Prisma not found error code
-        res.status(404).json({ error: "Vehicle not found" });
-      } else {
-        res.status(400).json({ error: "Invalid update request" });
+      const now = getCurrentTime();
+
+      const updateQuery = `
+        UPDATE vehicle
+        SET make = $1,
+            model = $2,
+            year = $3,
+            license_plate = $4,
+            updated_at = $5
+        WHERE id = $6 AND deleted_at IS NULL
+        RETURNING *
+      `;
+
+      const values = [make.trim(), model.trim(), year, license_plate.trim(), now, id];
+
+      const result = await db.query(updateQuery, values);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Vehicle not found or deleted" });
       }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error updating vehicle:", error);
+
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "Duplicate license plate" });
+      }
+
+      res.status(500).json({ error: "Failed to update vehicle" });
     }
   },
 
   async delete(req, res) {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
+
     try {
-      await prisma.vehicle.delete({ where: { id } });
+      const now = getCurrentTime();
+
+      const deleteQuery = `
+        UPDATE vehicle
+        SET deleted_at = $1
+        WHERE id = $2 AND deleted_at IS NULL
+        RETURNING *
+      `;
+
+      const result = await db.query(deleteQuery, [now, id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Vehicle not found or already deleted" });
+      }
+
       res.sendStatus(204);
     } catch (error) {
-      console.error(error);
-      if (error.code === "P2025") {
-        res.status(404).json({ error: "Vehicle not found" });
-      } else {
-        res.status(400).json({ error: "Failed to delete vehicle" });
-      }
+      console.error("Error deleting vehicle:", error);
+      res.status(500).json({ error: "Failed to delete vehicle" });
     }
   },
 };

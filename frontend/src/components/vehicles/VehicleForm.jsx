@@ -13,14 +13,14 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
     make: "",
     model: "",
     year: "",
-    licensePlate: "",
+    license_plate: "", // ✅ keep snake_case for consistency
   });
 
   useEffect(() => {
     if (current) {
       setForm(current);
     } else {
-      setForm({ make: "", model: "", year: "", licensePlate: "" });
+      setForm({ make: "", model: "", year: "", license_plate: "" });
     }
   }, [current]);
 
@@ -31,21 +31,26 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       const payload = {
         make: form.make.trim(),
         model: form.model.trim(),
-        year: Number(form.year), // ensure it's a number
-        licensePlate: form.licensePlate.trim(),
+        year: Number(form.year),
+        license_plate: form.license_plate.trim(), // ✅ matches backend
       };
+
+      console.log("🚀 Payload being sent to backend:", payload);
+
       if (current?.id) {
         await updateVehicle(current.id, payload);
       } else {
         await createVehicle(payload);
       }
+
       onSaved();
     } catch (error) {
-      console.error(error);
+      console.error("❌ Failed to save vehicle:", error);
       alert("Failed to save vehicle");
     }
   };
@@ -92,9 +97,9 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              name="licensePlate"
+              name="license_plate" // ✅ field name matches backend + DB
               label="License Plate"
-              value={form.licensePlate}
+              value={form.license_plate}
               onChange={handleChange}
               fullWidth
               required

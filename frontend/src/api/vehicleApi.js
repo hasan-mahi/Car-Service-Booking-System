@@ -1,12 +1,12 @@
-// src/api/vehicleApi.js
 import axios from "axios";
 
-const API = axios.create({
-  baseURL: "http://localhost:3001", // Adjust based on your backend
-});
+// Make sure this base URL matches your backend server
+const BASE_URL = "http://localhost:3001/vehicles";
 
-export const getVehicles = () => API.get("/vehicles");
-export const getVehicleById = (id) => API.get(`/vehicles/${id}`);
-export const createVehicle = (data) => API.post("/vehicles", data);
-export const updateVehicle = (id, data) => API.put(`/vehicles/${id}`, data);
-export const deleteVehicle = (id) => API.delete(`/vehicles/${id}`);
+export const getVehicles = () => axios.get(BASE_URL);
+
+export const createVehicle = (data) => axios.post(BASE_URL, data);
+
+export const updateVehicle = (id, data) => axios.put(`${BASE_URL}/${id}`, data);
+
+export const deleteVehicle = (id) => axios.delete(`${BASE_URL}/${id}`);
