@@ -33,7 +33,7 @@ A responsive, theme-aware web application for car repair services built with **R
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/hasan-mahi/car-repair-booking-system.git
+git clone https://github.com/hasan-mahi/Car-Service-Booking-System.git
 cd car-repair-booking-system/frontend
 
 2. Install Dependencies

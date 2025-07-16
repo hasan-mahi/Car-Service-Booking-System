@@ -8,6 +8,7 @@ import {
   Menu,
   MenuItem,
   Box,
+  Button,
   useScrollTrigger,
   useTheme,
 } from "@mui/material";
@@ -18,6 +19,7 @@ import useScrollDirection from "../../js/useScrollDirection";
 import ThemeToggle from "./ThemeToggle";
 import NavLinks from "./NavLinks";
 import MobileDrawer from "./MobileDrawer";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 const pages = [
   { name: "Home", path: "/" },
@@ -27,12 +29,20 @@ const pages = [
   { name: "Contact", path: "/contact" },
 ];
 
-export default function Navbar({ mode, toggleTheme }) {
+function getUserInitials(name) {
+  if (!name) return "U";
+  const names = name.trim().split(" ");
+  if (names.length === 1) return names[0][0].toUpperCase();
+  return (names[0][0] + names[1][0]).toUpperCase();
+}
+
+export default function Navbar({ mode, toggleTheme, user = null, onLogout }) {
   const theme = useTheme();
   const scrollDir = useScrollDirection({ threshold: 20, hideDelay: 200 });
   const isScrolled = useScrollTrigger({ threshold: 5 });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const navigate = useNavigate();
 
   const themeColors =
     theme.palette.mode === "light"
@@ -57,51 +67,58 @@ export default function Navbar({ mode, toggleTheme }) {
           textShadow: "none",
         };
 
-  const user = { name: "John Doe" };
   const navbarHeight = 64;
+
+  const handleMenuClose = () => setAnchorEl(null);
+
+  const handleLogout = () => {
+    handleMenuClose();
+    if (onLogout) onLogout();
+  };
+
+  const handleProfile = () => {
+    handleMenuClose();
+    navigate("/profile");
+  };
 
   return (
     <>
-<motion.div
-  initial={{ y: 0, opacity: 1 }}
-  animate={{
-    y: scrollDir === "down" ? -navbarHeight : 0,
-    opacity: scrollDir === "down" ? 0.6 : 1,
-  }}
-  transition={{ duration: 0.3, ease: "easeInOut" }}
-  style={{
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: navbarHeight,
-    zIndex: 1100,
-
-    // Use semi-transparent dark bg to show blur effect behind
-    backgroundColor:
-      scrollDir === "down"
-        ? "rgba(30, 30, 30, 0.4)"  // translucent black when hidden (adjust color/alpha as needed)
-        : "transparent",
-
-    backdropFilter: scrollDir === "down" ? "blur(10px)" : "none",
-    WebkitBackdropFilter: scrollDir === "down" ? "blur(10px)" : "none",
-
-    pointerEvents: scrollDir === "down" ? "none" : "auto",
-  }}
->
-  <AppBar
-    position="static"
-    sx={{
-      background:
-        scrollDir === "down"
-          ? "rgba(30, 30, 30, 0.4)" // match motion div bg so it looks consistent when hidden
-          : themeColors.bgGradient,
-      boxShadow: isScrolled ? 3 : 0,
-      height: "100%",
-      justifyContent: "center",
-      transition: "background 0.3s ease-in-out",
-    }}
-  >
+      <motion.div
+        initial={{ y: 0, opacity: 1 }}
+        animate={{
+          y: scrollDir === "down" ? -navbarHeight : 0,
+          opacity: scrollDir === "down" ? 0.6 : 1,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: navbarHeight,
+          zIndex: 1100,
+          backgroundColor:
+            scrollDir === "down"
+              ? "rgba(30, 30, 30, 0.4)"
+              : "transparent",
+          backdropFilter: scrollDir === "down" ? "blur(10px)" : "none",
+          WebkitBackdropFilter: scrollDir === "down" ? "blur(10px)" : "none",
+          pointerEvents: scrollDir === "down" ? "none" : "auto",
+        }}
+      >
+        <AppBar
+          position="static"
+          sx={{
+            background:
+              scrollDir === "down"
+                ? "rgba(30, 30, 30, 0.4)"
+                : themeColors.bgGradient,
+            boxShadow: isScrolled ? 3 : 0,
+            height: "100%",
+            justifyContent: "center",
+            transition: "background 0.3s ease-in-out",
+          }}
+        >
           <Toolbar
             sx={{
               justifyContent: "space-between",
@@ -119,6 +136,15 @@ export default function Navbar({ mode, toggleTheme }) {
                 alignItems: "center",
                 gap: 8,
                 cursor: "pointer",
+                userSelect: "none",
+              }}
+              aria-label="Go to homepage"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
               }}
             >
               <motion.div
@@ -143,31 +169,79 @@ export default function Navbar({ mode, toggleTheme }) {
             <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 2 }}>
               <NavLinks pages={pages} themeColors={themeColors} />
               <ThemeToggle mode={mode} toggleTheme={toggleTheme} />
-              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-                <Avatar sx={{ bgcolor: themeColors.avatarBg, color: themeColors.avatarText }}>
-                  {user.name[0]}
-                </Avatar>
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => setAnchorEl(null)}
-                PaperProps={{
-                  sx: {
-                    backgroundColor: themeColors.drawerBg,
-                    color: themeColors.drawerText,
-                  },
-                }}
-              >
-                <MenuItem onClick={() => setAnchorEl(null)}>Profile</MenuItem>
-                <MenuItem onClick={() => setAnchorEl(null)}>Logout</MenuItem>
-              </Menu>
+
+              {!user ? (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/auth"
+                    variant="outlined"
+                    sx={{ color: themeColors.textPrimary, borderColor: themeColors.textPrimary }}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    component={RouterLink}
+                    to="/auth?mode=register"
+                    variant="contained"
+                    sx={{ ml: 1 }}
+                  >
+                    Register
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <IconButton
+                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                    aria-controls={Boolean(anchorEl) ? "user-menu" : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={Boolean(anchorEl) ? "true" : undefined}
+                    aria-label="User menu"
+                  >
+                    <Avatar
+                      sx={{ bgcolor: themeColors.avatarBg, color: themeColors.avatarText }}
+                      alt={user.name || user.username || "U"}
+                    >
+                      {getUserInitials(user.name || user.username || "User")}
+                    </Avatar>
+                  </IconButton>
+                  <Menu
+                    id="user-menu"
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                      sx: {
+                        backgroundColor: themeColors.drawerBg,
+                        color: themeColors.drawerText,
+                      },
+                    }}
+                  >
+                    <MenuItem onClick={handleProfile}>Profile</MenuItem>
+                    {user.role === "admin" && (
+                      <MenuItem
+                        onClick={() => {
+                          handleMenuClose();
+                          navigate("/admin");
+                        }}
+                      >
+                        Admin Panel
+                      </MenuItem>
+                    )}
+                    <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                  </Menu>
+                </>
+              )}
             </Box>
 
             {/* Mobile Menu */}
             <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center", gap: 1 }}>
               <ThemeToggle mode={mode} toggleTheme={toggleTheme} />
-              <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: themeColors.accent }}>
+              <IconButton
+                onClick={() => setDrawerOpen(true)}
+                sx={{ color: themeColors.accent }}
+                aria-label="Open menu"
+              >
                 <MenuIcon />
               </IconButton>
             </Box>
@@ -180,7 +254,7 @@ export default function Navbar({ mode, toggleTheme }) {
         onClose={() => setDrawerOpen(false)}
         pages={pages}
         themeColors={themeColors}
-        isLoggedIn={true}
+        isLoggedIn={Boolean(user)}
         toggleTheme={toggleTheme}
       />
     </>
