@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import Login from "../components/auth/Login";
-import Register from "../components/auth/Register";
+import Login from "./Login";
+import Register from "./Register";
 
 export default function AuthPage({ onLoginSuccess }) {
   const [searchParams, setSearchParams] = useSearchParams();

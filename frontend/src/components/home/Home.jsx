@@ -1,10 +1,10 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { motion } from "framer-motion";
-import HeroSection from "../components/home/HeroSection";
-import Testimonials from "../components/home/Testimonials";
-import ServiceGallery from "../components/home/ServiceGallery";
-import BookingSection from "../components/home/BookingSection";
+import HeroSection from "./HeroSection";
+import Testimonials from "./Testimonials";
+import ServiceGallery from "./ServiceGallery";
+import BookingSection from "./BookingSection";
 
 export default function Home() {
   return (

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import VehicleForm from "../components/vehicles/VehicleForm";
-import VehicleList from "../components/vehicles/VehicleList";
+import VehicleForm from "./VehicleForm";
+import VehicleList from "./VehicleList";
 import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 

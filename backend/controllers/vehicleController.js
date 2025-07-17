@@ -24,8 +24,7 @@ const vehicleController = {
   async getById(req, res) {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
+      return res.status(400).json({ error: "Invalid vehicle ID" });
     }
 
     const result = await db.query(
@@ -35,8 +34,7 @@ const vehicleController = {
 
     const vehicle = result.rows[0];
     if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
-      res.status(404).json({ error: "Vehicle not found or access denied" });
-      return;
+      return res.status(404).json({ error: "Vehicle not found or access denied" });
     }
 
     res.json(vehicle);
@@ -44,22 +42,12 @@ const vehicleController = {
 
   async create(req, res) {
     if (!req.user?.id) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
-    let { make, model, year, license_plate } = req.body;
+    // We rely on validation middleware, so use sanitized req.validatedBody
+    const { make, model, year, license_plate } = req.validatedBody;
     const user_id = req.user.id;
-
-    make = make?.trim();
-    model = model?.trim();
-    license_plate = license_plate?.trim();
-
-    if (!make || !model || !license_plate || typeof year !== "number") {
-      res.status(400).json({ error: "Invalid or missing fields" });
-      return;
-    }
-
     const now = getCurrentTime();
 
     const insertQuery = `
@@ -74,31 +62,20 @@ const vehicleController = {
       res.status(201).json(result.rows[0]);
     } catch (error) {
       if (error.code === "23505") {
-        // Duplicate license plate error
-        res.status(400).json({ error: "License plate already exists" });
-        return;
+        return res.status(400).json({ error: "License plate already exists" });
       }
-      throw error; // rethrow for centralized error handler
+      throw error;
     }
   },
 
   async update(req, res) {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
+      return res.status(400).json({ error: "Invalid vehicle ID" });
     }
 
-    let { make, model, year, license_plate } = req.body;
-
-    make = make?.trim();
-    model = model?.trim();
-    license_plate = license_plate?.trim();
-
-    if (!make || !model || !license_plate || typeof year !== "number") {
-      res.status(400).json({ error: "Invalid or missing fields" });
-      return;
-    }
+    // We rely on validation middleware, so use sanitized req.validatedBody
+    const { make, model, year, license_plate } = req.validatedBody;
 
     const vehicleResult = await db.query(
       "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
@@ -107,8 +84,7 @@ const vehicleController = {
     const vehicle = vehicleResult.rows[0];
 
     if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
-      res.status(404).json({ error: "Vehicle not found or access denied" });
-      return;
+      return res.status(404).json({ error: "Vehicle not found or access denied" });
     }
 
     const now = getCurrentTime();
@@ -132,18 +108,16 @@ const vehicleController = {
       res.json(result.rows[0]);
     } catch (error) {
       if (error.code === "23505") {
-        res.status(400).json({ error: "License plate already exists" });
-        return;
+        return res.status(400).json({ error: "License plate already exists" });
       }
-      throw error; // centralized error handler will catch this
+      throw error;
     }
   },
 
   async delete(req, res) {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
+      return res.status(400).json({ error: "Invalid vehicle ID" });
     }
 
     const vehicleResult = await db.query(
@@ -153,16 +127,12 @@ const vehicleController = {
     const vehicle = vehicleResult.rows[0];
 
     if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
-      res.status(404).json({ error: "Vehicle not found or access denied" });
-      return;
+      return res.status(404).json({ error: "Vehicle not found or access denied" });
     }
 
     const now = getCurrentTime();
 
-    await db.query(
-      "UPDATE vehicle SET deleted_at = $1 WHERE id = $2",
-      [now, id]
-    );
+    await db.query("UPDATE vehicle SET deleted_at = $1 WHERE id = $2", [now, id]);
 
     res.status(204).send();
   },

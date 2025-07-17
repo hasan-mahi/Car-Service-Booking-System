@@ -1,29 +1,48 @@
 import React, { useState } from "react";
 import { TextField, Button, Typography, Stack } from "@mui/material";
 import { loginUser } from "../../api/authApi";
+import { loginSchema } from "../../../validators/userValidator"; // adjust path as needed
 
 export default function Login({ onLoginSuccess }) {
   const [form, setForm] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({}); // Track errors per field
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(""); // Store error messages
+  const [submitError, setSubmitError] = useState(""); // For API error messages
+
+  const validate = () => {
+    const { error } = loginSchema.validate(form, { abortEarly: false });
+    if (!error) {
+      setErrors({});
+      return true;
+    }
+
+    const errs = {};
+    error.details.forEach((detail) => {
+      const key = detail.path[0];
+      // Only keep the first error message per field
+      if (!errs[key]) errs[key] = detail.message;
+    });
+
+    setErrors(errs);
+    return false;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
 
-    if (error) setError(""); // Clear error on input change for better UX
+    // Clear field error when user starts typing
+    setErrors((errs) => ({ ...errs, [name]: "" }));
+    setSubmitError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.username.trim() || !form.password) {
-      setError("Please enter both username and password.");
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
-    setError("");
+    setSubmitError("");
 
     try {
       const res = await loginUser({
@@ -38,11 +57,8 @@ export default function Login({ onLoginSuccess }) {
 
       onLoginSuccess?.(user, token);
     } catch (err) {
-      // err.message is already a clean message from your centralized API error handler
-      setError(err.message || "Login failed. Please try again later.");
-
-      // Clear password after failure for security
-      setForm((f) => ({ ...f, password: "" }));
+      setSubmitError(err.message || "Login failed. Please try again later.");
+      setForm((f) => ({ ...f, password: "" })); // Clear password
     } finally {
       setLoading(false);
     }
@@ -54,9 +70,9 @@ export default function Login({ onLoginSuccess }) {
         Login
       </Typography>
 
-      {error && (
+      {submitError && (
         <Typography color="error" mb={2}>
-          {error}
+          {submitError}
         </Typography>
       )}
 
@@ -71,6 +87,8 @@ export default function Login({ onLoginSuccess }) {
           autoFocus
           disabled={loading}
           autoComplete="username"
+          error={!!errors.username}
+          helperText={errors.username}
         />
         <TextField
           label="Password"
@@ -82,6 +100,8 @@ export default function Login({ onLoginSuccess }) {
           required
           disabled={loading}
           autoComplete="current-password"
+          error={!!errors.password}
+          helperText={errors.password}
         />
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? "Logging in..." : "Login"}

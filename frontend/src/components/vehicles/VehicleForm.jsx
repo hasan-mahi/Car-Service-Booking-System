@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
-import {
-  TextField,
-  Button,
-  Typography,
-  Grid,
-  Stack,
-} from "@mui/material";
+import { TextField, Button, Typography, Grid, Stack } from "@mui/material";
 import { createVehicle, updateVehicle } from "../../api/vehicleApi";
+import { validateVehicle } from "../../../validators/vehicleValidator";
 
 export default function VehicleForm({ current, onSaved, onCancel }) {
   const [form, setForm] = useState({
     make: "",
     model: "",
-    year: "", // keep as string for controlled input
+    year: "", // string for controlled input
     license_plate: "",
   });
+
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (current) {
@@ -27,46 +24,46 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
     } else {
       setForm({ make: "", model: "", year: "", license_plate: "" });
     }
+    setErrors({});
   }, [current]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Validate field on change
+    const { isValid, errors: fieldErrors } = validateVehicle({
+      ...form,
+      [name]: value,
+    });
+
+    if (!isValid) {
+      setErrors(fieldErrors);
+    } else {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate year: must be a number within a reasonable range
-    const yearNum = Number(form.year);
-    const currentYear = new Date().getFullYear();
-    if (
-      !form.make.trim() ||
-      !form.model.trim() ||
-      !form.license_plate.trim() ||
-      !form.year ||
-      isNaN(yearNum) ||
-      yearNum < 1886 || // first car invention year
-      yearNum > currentYear + 1
-    ) {
-      alert("Please fill all fields with valid values. Year must be between 1886 and next year.");
+    const { isValid, errors: validationErrors, value } = validateVehicle(form);
+    if (!isValid) {
+      setErrors(validationErrors);
       return;
     }
 
     try {
-      const payload = {
-        make: form.make.trim(),
-        model: form.model.trim(),
-        year: yearNum,
-        license_plate: form.license_plate.trim(),
-      };
-
       if (current?.id) {
-        await updateVehicle(current.id, payload);
+        await updateVehicle(current.id, value);
       } else {
-        await createVehicle(payload);
+        await createVehicle(value);
       }
-
       onSaved();
     } catch (error) {
       console.error("❌ Failed to save vehicle:", error);
@@ -81,59 +78,35 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
       </Typography>
       <form onSubmit={handleSubmit} noValidate autoComplete="off">
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              name="make"
-              label="Make"
-              value={form.make}
-              onChange={handleChange}
-              fullWidth
-              required
-              autoFocus
-              autoComplete="off"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              name="model"
-              label="Model"
-              value={form.model}
-              onChange={handleChange}
-              fullWidth
-              required
-              autoComplete="off"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              name="year"
-              label="Year"
-              type="number"
-              value={form.year}
-              onChange={handleChange}
-              fullWidth
-              required
-              inputProps={{ min: 1886, max: new Date().getFullYear() + 1 }}
-              autoComplete="off"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              name="license_plate"
-              label="License Plate"
-              value={form.license_plate}
-              onChange={handleChange}
-              fullWidth
-              required
-              autoComplete="off"
-            />
-          </Grid>
+          {["make", "model", "year", "license_plate"].map((field) => (
+            <Grid key={field}>
+              <TextField
+                name={field}
+                label={field.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                value={form[field]}
+                onChange={handleChange}
+                fullWidth
+                required
+                type={field === "year" ? "number" : "text"}
+                error={!!errors[field]}
+                helperText={errors[field]}
+                inputProps={field === "year" ? { min: 1886, max: new Date().getFullYear() + 1 } : {}}
+                autoComplete="off"
+                autoFocus={field === "make"}
+              />
+            </Grid>
+          ))}
         </Grid>
         <Stack direction="row" justifyContent="flex-end" mt={3} spacing={2}>
           <Button variant="outlined" color="secondary" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="contained" type="submit" color="primary">
+          <Button
+            variant="contained"
+            type="submit"
+            color="primary"
+            disabled={Object.keys(errors).length > 0}
+          >
             {current ? "Update Vehicle" : "Add Vehicle"}
           </Button>
         </Stack>

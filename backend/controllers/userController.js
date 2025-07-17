@@ -8,61 +8,46 @@ const JWT_EXPIRES_IN = "8h";
 
 const userController = {
   async registerUser(req, res) {
-    const { username, email, password } = req.body;
+    const { username, email, password } = req.validatedBody;
 
-    if (!username || !email || !password) {
-      res.status(400).json({ error: "Missing required fields" });
-      return;
-    }
-
-    // Check for existing username/email
     const existing = await db.query(
       `SELECT 1 FROM users WHERE (username = $1 OR email = $2) AND deleted_at IS NULL LIMIT 1`,
       [username.trim(), email.trim()]
     );
     if (existing.rows.length > 0) {
-      res.status(400).json({ error: "Username or email already exists" });
-      return;
+      return res.status(400).json({ error: "Username or email already exists" });
     }
 
-    // Get 'customer' role info
     const roleRes = await db.query(
       `SELECT id, name FROM roles WHERE name = 'customer' AND deleted_at IS NULL LIMIT 1`
     );
     if (roleRes.rows.length === 0) {
-      res.status(500).json({ error: "Customer role not found" });
-      return;
+      return res.status(500).json({ error: "Customer role not found" });
     }
 
     const { id: role_id, name: role_name } = roleRes.rows[0];
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Insert new user
     const result = await db.query(
       `INSERT INTO users (username, email, password, role_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, NOW(), NOW())
        RETURNING id, username, email, role_id`,
       [username.trim(), email.trim(), hashedPassword, role_id]
     );
-
     const user = result.rows[0];
 
-    // Grant full vehicle access to 'customer' role (if not already set)
     await db.query(
-      `
-      INSERT INTO accesses (role_id, resource, can_create, can_read, can_update, can_delete)
-      VALUES ($1, 'vehicle', true, true, true, true)
-      ON CONFLICT (role_id, resource)
-      DO UPDATE SET
-        can_create = EXCLUDED.can_create,
-        can_read = EXCLUDED.can_read,
-        can_update = EXCLUDED.can_update,
-        can_delete = EXCLUDED.can_delete;
-      `,
+      `INSERT INTO accesses (role_id, resource, can_create, can_read, can_update, can_delete)
+       VALUES ($1, 'vehicle', true, true, true, true)
+       ON CONFLICT (role_id, resource)
+       DO UPDATE SET
+         can_create = EXCLUDED.can_create,
+         can_read = EXCLUDED.can_read,
+         can_update = EXCLUDED.can_update,
+         can_delete = EXCLUDED.can_delete;`,
       [role_id]
     );
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user.id, username: user.username, email: user.email, role_id, role_name },
       JWT_SECRET,
@@ -73,12 +58,7 @@ const userController = {
   },
 
   async loginUser(req, res) {
-    const { username, password } = req.body;
-
-    if (!username?.trim() || !password?.trim()) {
-      res.status(400).json({ error: "Username and password are required" });
-      return;
-    }
+    const { username, password } = req.validatedBody;
 
     const result = await db.query(
       `SELECT u.id, u.username, u.email, u.password, u.role_id, r.name as role_name
@@ -89,16 +69,14 @@ const userController = {
     );
 
     if (result.rows.length === 0) {
-      res.status(401).json({ error: "Invalid username or password" });
-      return;
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const user = result.rows[0];
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      res.status(401).json({ error: "Invalid username or password" });
-      return;
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const payload = {
@@ -110,7 +88,6 @@ const userController = {
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
     res.json({ message: "Login successful", token, user: payload });
   },
 
@@ -127,12 +104,11 @@ const userController = {
 
   async updateUser(req, res) {
     const id = parseInt(req.params.id, 10);
-    const { username, email, role_id } = req.body;
-
-    if (!username || !email || !role_id || isNaN(id)) {
-      res.status(400).json({ error: "Missing or invalid input" });
-      return;
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid user ID" });
     }
+
+    const { username, email, role_id } = req.validatedBody;
 
     const result = await db.query(
       `UPDATE users
@@ -143,8 +119,7 @@ const userController = {
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ error: "User not found or deleted" });
-      return;
+      return res.status(404).json({ error: "User not found or deleted" });
     }
 
     res.json(result.rows[0]);
@@ -153,8 +128,7 @@ const userController = {
   async deleteUser(req, res) {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid user ID" });
-      return;
+      return res.status(400).json({ error: "Invalid user ID" });
     }
 
     const result = await db.query(
@@ -162,8 +136,7 @@ const userController = {
       [id]
     );
     if (result.rows.length === 0) {
-      res.status(404).json({ error: "User not found or already deleted" });
-      return;
+      return res.status(404).json({ error: "User not found or already deleted" });
     }
 
     res.sendStatus(204);
@@ -179,24 +152,15 @@ const userController = {
   async getRoleAccess(req, res) {
     const role_id = parseInt(req.params.role_id, 10);
     if (isNaN(role_id)) {
-      res.status(400).json({ error: "Invalid role ID" });
-      return;
+      return res.status(400).json({ error: "Invalid role ID" });
     }
 
-    const result = await db.query(
-      `SELECT * FROM accesses WHERE role_id = $1`,
-      [role_id]
-    );
+    const result = await db.query(`SELECT * FROM accesses WHERE role_id = $1`, [role_id]);
     res.json(result.rows);
   },
 
   async updateRoleAccess(req, res) {
-    const { role_id, resource, can_create, can_read, can_update, can_delete } = req.body;
-
-    if (!role_id || !resource) {
-      res.status(400).json({ error: "Missing role_id or resource" });
-      return;
-    }
+    const { role_id, resource, can_create, can_read, can_update, can_delete } = req.validatedBody;
 
     const upsert = `
       INSERT INTO accesses (role_id, resource, can_create, can_read, can_update, can_delete)

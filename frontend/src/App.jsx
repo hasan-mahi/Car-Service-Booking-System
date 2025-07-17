@@ -4,10 +4,10 @@ import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
 import Layout from "./components/Layout";
 
-import Home from "./pages/Home";
+import Home from "./components/home/Home";
 import Services from "./pages/Service";
-import Vehicles from "./pages/Vehicles";
-import AuthPage from "./pages/Auth";
+import Vehicles from "./components/vehicles/Vehicles";
+import AuthPage from "./components/auth/Auth";
 
 
 function App({ mode, toggleTheme }) {

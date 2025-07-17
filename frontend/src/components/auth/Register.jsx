@@ -1,28 +1,47 @@
 import React, { useState } from "react";
 import { TextField, Button, Typography, Stack } from "@mui/material";
 import { registerUser } from "../../api/authApi";
+import { registerSchema } from "../../../validators/userValidator"; // adjust path if needed
 
 export default function Register({ onRegisterSuccess }) {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(""); // error message for UI
+  const [submitError, setSubmitError] = useState("");
+
+  const validate = () => {
+    const { error } = registerSchema.validate(form, { abortEarly: false });
+    if (!error) {
+      setErrors({});
+      return true;
+    }
+
+    const errs = {};
+    error.details.forEach((detail) => {
+      const key = detail.path[0];
+      if (!errs[key]) errs[key] = detail.message;
+    });
+    setErrors(errs);
+
+    return false;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
-    if (error) setError(""); // clear error on input change
+
+    // Clear specific field error on change
+    setErrors((errs) => ({ ...errs, [name]: "" }));
+    setSubmitError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.username.trim() || !form.email.trim() || !form.password) {
-      setError("Please fill in all required fields.");
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
-    setError("");
+    setSubmitError("");
 
     try {
       const res = await registerUser({
@@ -38,9 +57,7 @@ export default function Register({ onRegisterSuccess }) {
 
       onRegisterSuccess?.(user, token);
     } catch (err) {
-      // err.message already contains the user-friendly message from handleApiError in api layer
-      setError(err.message || "Registration failed. Please try again.");
-      // Optionally, avoid console.error here since it’s already logged in api layer
+      setSubmitError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -52,9 +69,9 @@ export default function Register({ onRegisterSuccess }) {
         Register
       </Typography>
 
-      {error && (
+      {submitError && (
         <Typography color="error" mb={2}>
-          {error}
+          {submitError}
         </Typography>
       )}
 
@@ -69,6 +86,8 @@ export default function Register({ onRegisterSuccess }) {
           disabled={loading}
           autoFocus
           autoComplete="username"
+          error={!!errors.username}
+          helperText={errors.username}
         />
         <TextField
           label="Email"
@@ -80,6 +99,8 @@ export default function Register({ onRegisterSuccess }) {
           required
           disabled={loading}
           autoComplete="email"
+          error={!!errors.email}
+          helperText={errors.email}
         />
         <TextField
           label="Password"
@@ -91,6 +112,8 @@ export default function Register({ onRegisterSuccess }) {
           required
           disabled={loading}
           autoComplete="new-password"
+          error={!!errors.password}
+          helperText={errors.password}
         />
         <Button type="submit" variant="contained" disabled={loading}>
           {loading ? "Registering..." : "Register"}
