@@ -5,6 +5,8 @@ require("dotenv").config();
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const userRoutes = require("./routes/userRoutes");
 
+const { handleError } = require("./utils/errorHandler"); // Import centralized error handler
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -13,24 +15,22 @@ app.use(express.json());
 
 // Mount routes
 app.use("/vehicles", vehicleRoutes);
-
-// Mount user routes at /api/users (adjust based on your route definitions)
 app.use("/users", userRoutes);
 
-// Root endpoint (optional, return json)
+// Root endpoint (optional, returns JSON)
 app.get("/", (req, res) => {
   res.json({ message: "Vehicle Management API" });
 });
 
-// 404 handler
+// 404 handler — respond with JSON
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// Global error handler
+// Global error handler — use centralized handleError function
 app.use((err, req, res, next) => {
-  console.error("Unexpected error:", err);
-  res.status(500).json({ error: "Internal Server Error" });
+  // Use centralized error handler to send response
+  handleError(res, err);
 });
 
 app.listen(PORT, () => {

@@ -1,4 +1,3 @@
-// src/components/VehicleList.jsx
 import React, { useEffect, useState } from "react";
 import {
   Paper,
@@ -33,6 +32,7 @@ export default function VehicleList({ onEdit }) {
       setVehicles(res.data);
     } catch (err) {
       console.error("Failed to fetch vehicles:", err);
+      // Optionally: show user feedback here
     }
   };
 
@@ -55,9 +55,9 @@ export default function VehicleList({ onEdit }) {
     if (!selectedVehicleId) return;
     setIsDeleting(true);
     try {
-      await deleteVehicle(selectedVehicleId); // handles 204 response
-      await fetchVehicles(); // refresh list
-      handleCloseDialog(); // close dialog
+      await deleteVehicle(selectedVehicleId); // Expect 204 No Content
+      await fetchVehicles();
+      handleCloseDialog();
     } catch (err) {
       console.error("Delete failed:", err);
       alert("Failed to delete vehicle.");
@@ -93,6 +93,7 @@ export default function VehicleList({ onEdit }) {
                       edge="end"
                       onClick={() => handleOpenDialog(v.id)}
                       color="error"
+                      aria-label={`Delete vehicle ${v.make} ${v.model}`}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -105,9 +106,8 @@ export default function VehicleList({ onEdit }) {
         </List>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
+      <Dialog open={openDialog} onClose={handleCloseDialog} aria-labelledby="delete-dialog-title">
+        <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Are you sure you want to delete this vehicle? This action cannot be undone.

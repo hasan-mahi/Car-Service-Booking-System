@@ -1,15 +1,18 @@
 import axios from "axios";
+import { handleApiError } from "../../utils/errorHandler";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-// Utility: Get JWT token from localStorage
-function getToken() {
-  return localStorage.getItem("token") || null;
+export function getToken() {
+  try {
+    return localStorage.getItem("token");
+  } catch {
+    return null;
+  }
 }
 
-// Helper: Attach Authorization header if token exists
-function getAuthHeaders(token = getToken()) {
-  if (!token) return {}; // no auth header if no token
+export function getAuthHeaders(token = getToken()) {
+  if (!token) return {};
   return {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -19,46 +22,74 @@ function getAuthHeaders(token = getToken()) {
 
 // PUBLIC endpoints (no auth)
 export async function registerUser(data) {
-  return axios.post(`${API_URL}/users/register`, data);
+  try {
+    return await axios.post(`${API_URL}/users/register`, data);
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
 export async function loginUser(data) {
-  return axios.post(`${API_URL}/users/login`, data);
+  try {
+    return await axios.post(`${API_URL}/users/login`, data);
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// AUTHENTICATED endpoints (require token)
-
-// Get all users
+// AUTHENTICATED endpoints
 export async function getUsers(token) {
-  return axios.get(`${API_URL}/users`, getAuthHeaders(token));
+  try {
+    return await axios.get(`${API_URL}/users`, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Get user by ID
 export async function getUserById(id, token) {
-  return axios.get(`${API_URL}/users/${id}`, getAuthHeaders(token));
+  try {
+    return await axios.get(`${API_URL}/users/${id}`, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Update user by ID
 export async function updateUser(id, data, token) {
-  return axios.put(`${API_URL}/users/${id}`, data, getAuthHeaders(token));
+  try {
+    return await axios.put(`${API_URL}/users/${id}`, data, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Delete user by ID
 export async function deleteUser(id, token) {
-  return axios.delete(`${API_URL}/users/${id}`, getAuthHeaders(token));
+  try {
+    return await axios.delete(`${API_URL}/users/${id}`, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Get roles
 export async function getRoles(token) {
-  return axios.get(`${API_URL}/users/roles`, getAuthHeaders(token));
+  try {
+    return await axios.get(`${API_URL}/users/roles`, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Get access permissions for a role
 export async function getRoleAccess(roleId, token) {
-  return axios.get(`${API_URL}/users/accesses/${roleId}`, getAuthHeaders(token));
+  try {
+    return await axios.get(`${API_URL}/users/accesses/${roleId}`, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }
 
-// Update role access permissions
 export async function updateRoleAccess(data, token) {
-  return axios.post(`${API_URL}/users/accesses`, data, getAuthHeaders(token));
+  try {
+    return await axios.post(`${API_URL}/users/accesses`, data, getAuthHeaders(token));
+  } catch (error) {
+    throw new Error(handleApiError(error));
+  }
 }

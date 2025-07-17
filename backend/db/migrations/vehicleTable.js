@@ -31,6 +31,7 @@ async function vehicleTable() {
   // Desired columns (your model)
   const desiredColumns = [
     { name: "id", type: "integer", nullable: false },
+     { name: "user_id", type: "integer", nullable: false },
     { name: "make", type: "character varying", nullable: false },
     { name: "model", type: "character varying", nullable: false },
     { name: "year", type: "integer", nullable: false },

@@ -12,13 +12,18 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
   const [form, setForm] = useState({
     make: "",
     model: "",
-    year: "",
-    license_plate: "", // ✅ keep snake_case for consistency
+    year: "", // keep as string for controlled input
+    license_plate: "",
   });
 
   useEffect(() => {
     if (current) {
-      setForm(current);
+      setForm({
+        make: current.make || "",
+        model: current.model || "",
+        year: current.year ? String(current.year) : "",
+        license_plate: current.license_plate || "",
+      });
     } else {
       setForm({ make: "", model: "", year: "", license_plate: "" });
     }
@@ -32,15 +37,29 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate year: must be a number within a reasonable range
+    const yearNum = Number(form.year);
+    const currentYear = new Date().getFullYear();
+    if (
+      !form.make.trim() ||
+      !form.model.trim() ||
+      !form.license_plate.trim() ||
+      !form.year ||
+      isNaN(yearNum) ||
+      yearNum < 1886 || // first car invention year
+      yearNum > currentYear + 1
+    ) {
+      alert("Please fill all fields with valid values. Year must be between 1886 and next year.");
+      return;
+    }
+
     try {
       const payload = {
         make: form.make.trim(),
         model: form.model.trim(),
-        year: Number(form.year),
-        license_plate: form.license_plate.trim(), // ✅ matches backend
+        year: yearNum,
+        license_plate: form.license_plate.trim(),
       };
-
-      console.log("🚀 Payload being sent to backend:", payload);
 
       if (current?.id) {
         await updateVehicle(current.id, payload);
@@ -60,7 +79,7 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
       <Typography variant="h6" gutterBottom>
         {current ? "Edit Vehicle" : "Add New Vehicle"}
       </Typography>
-      <form onSubmit={handleSubmit} noValidate>
+      <form onSubmit={handleSubmit} noValidate autoComplete="off">
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField
@@ -71,6 +90,7 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
               fullWidth
               required
               autoFocus
+              autoComplete="off"
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -81,6 +101,7 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
               onChange={handleChange}
               fullWidth
               required
+              autoComplete="off"
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -93,16 +114,18 @@ export default function VehicleForm({ current, onSaved, onCancel }) {
               fullWidth
               required
               inputProps={{ min: 1886, max: new Date().getFullYear() + 1 }}
+              autoComplete="off"
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              name="license_plate" // ✅ field name matches backend + DB
+              name="license_plate"
               label="License Plate"
               value={form.license_plate}
               onChange={handleChange}
               fullWidth
               required
+              autoComplete="off"
             />
           </Grid>
         </Grid>

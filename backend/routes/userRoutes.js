@@ -1,58 +1,26 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
+const { authenticateToken, checkAccess } = require("../utils/grantAccess");
+const { asyncHandler } = require("../utils/errorHandler"); // import asyncHandler
 
-// Public routes (no auth)
-router.post("/register", userController.registerUser);
-router.post("/login", userController.loginUser);
+// Public routes
+router.post("/register", asyncHandler(userController.registerUser));
+router.post("/login", asyncHandler(userController.loginUser));
 
-// Protect routes below this middleware
-router.use(userController.authenticateToken);
+// Protect all routes below this
+router.use(authenticateToken);
 
-// Protected user management routes with access control
-router.get(
-  "/",
-  userController.checkAccess("user", "can_read"),   // permission to read users
-  userController.getAllUsers
-);
+// Protected user routes
+router.get("/", checkAccess("user", "can_read"), asyncHandler(userController.getAllUsers));
+router.put("/:id", checkAccess("user", "can_update"), asyncHandler(userController.updateUser));
+router.delete("/:id", checkAccess("user", "can_delete"), asyncHandler(userController.deleteUser));
 
-// Uncomment and add createUser method in controller if needed:
-// router.post(
-//   "/",
-//   userController.checkAccess("user", "can_create"), // permission to create user
-//   userController.createUser
-// );
+// Role management
+router.get("/roles", checkAccess("role", "can_read"), asyncHandler(userController.getRoles));
 
-router.put(
-  "/:id",
-  userController.checkAccess("user", "can_update"), // permission to update user
-  userController.updateUser
-);
-
-router.delete(
-  "/:id",
-  userController.checkAccess("user", "can_delete"), // permission to delete user
-  userController.deleteUser
-);
-
-// Role management (read roles)
-router.get(
-  "/roles",
-  userController.checkAccess("role", "can_read"),
-  userController.getRoles
-);
-
-// Access management for roles (read and update accesses)
-router.get(
-  "/accesses/:role_id",
-  userController.checkAccess("access", "can_read"),
-  userController.getRoleAccess
-);
-
-router.post(
-  "/accesses",
-  userController.checkAccess("access", "can_update"),
-  userController.updateRoleAccess
-);
+// Access management
+router.get("/accesses/:role_id", checkAccess("access", "can_read"), asyncHandler(userController.getRoleAccess));
+router.post("/accesses", checkAccess("access", "can_update"), asyncHandler(userController.updateRoleAccess));
 
 module.exports = router;

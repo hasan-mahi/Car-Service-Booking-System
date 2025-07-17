@@ -1,153 +1,170 @@
 const db = require("../db/index");
+const { isAdmin, canAccessResource } = require("../utils/grantAccess");
 
-const getCurrentTime = () => new Date(); // Uses server's local time or UTC depending on Node config
+const getCurrentTime = () => new Date(); // Server time
 
 const vehicleController = {
   async getAll(req, res) {
-    try {
-      const result = await db.query(
+    let result;
+
+    if (isAdmin(req.user)) {
+      result = await db.query(
         "SELECT * FROM vehicle WHERE deleted_at IS NULL ORDER BY id DESC"
       );
-      res.json(result.rows);
-    } catch (error) {
-      console.error("Error fetching vehicles:", error);
-      res.status(500).json({ error: "Failed to fetch vehicles" });
+    } else {
+      result = await db.query(
+        "SELECT * FROM vehicle WHERE user_id = $1 AND deleted_at IS NULL ORDER BY id DESC",
+        [req.user.id]
+      );
     }
+
+    res.json(result.rows);
   },
 
   async getById(req, res) {
     const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
-
-    try {
-      const result = await db.query(
-        "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
-        [id]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Vehicle not found" });
-      }
-
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error fetching vehicle:", error);
-      res.status(500).json({ error: "Server error" });
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid vehicle ID" });
+      return;
     }
+
+    const result = await db.query(
+      "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
+      [id]
+    );
+
+    const vehicle = result.rows[0];
+    if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
+      res.status(404).json({ error: "Vehicle not found or access denied" });
+      return;
+    }
+
+    res.json(vehicle);
   },
 
   async create(req, res) {
-    const { make, model, year, license_plate } = req.body;
-
-    if (
-      !make || !model || ! license_plate || !year ||
-      typeof make !== "string" ||
-      typeof model !== "string" ||
-      typeof  license_plate !== "string" ||
-      typeof year !== "number"
-    ) {
-      return res.status(400).json({ error: "Invalid or missing fields" });
+    if (!req.user?.id) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
+    let { make, model, year, license_plate } = req.body;
+    const user_id = req.user.id;
+
+    make = make?.trim();
+    model = model?.trim();
+    license_plate = license_plate?.trim();
+
+    if (!make || !model || !license_plate || typeof year !== "number") {
+      res.status(400).json({ error: "Invalid or missing fields" });
+      return;
+    }
+
+    const now = getCurrentTime();
+
+    const insertQuery = `
+      INSERT INTO vehicle (user_id, make, model, year, license_plate, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *;
+    `;
+    const values = [user_id, make, model, year, license_plate, now, now];
+
     try {
-      const now = getCurrentTime();
-
-      const insertQuery = `
-        INSERT INTO vehicle (make, model, year, license_plate, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-      `;
-
-      const values = [make.trim(), model.trim(), year,  license_plate.trim(), now, now];
-
       const result = await db.query(insertQuery, values);
       res.status(201).json(result.rows[0]);
     } catch (error) {
-      console.error("Error creating vehicle:", error);
-
       if (error.code === "23505") {
-        return res.status(400).json({ error: "Duplicate license plate" });
+        // Duplicate license plate error
+        res.status(400).json({ error: "License plate already exists" });
+        return;
       }
-
-      res.status(500).json({ error: "Failed to save vehicle" });
+      throw error; // rethrow for centralized error handler
     }
   },
 
   async update(req, res) {
     const id = parseInt(req.params.id, 10);
-    const { make, model, year,  license_plate } = req.body;
-
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
-
-    if (
-      !make || !model || ! license_plate || !year ||
-      typeof make !== "string" ||
-      typeof model !== "string" ||
-      typeof  license_plate !== "string" ||
-      typeof year !== "number"
-    ) {
-      return res.status(400).json({ error: "Invalid or missing fields" });
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid vehicle ID" });
+      return;
     }
 
+    let { make, model, year, license_plate } = req.body;
+
+    make = make?.trim();
+    model = model?.trim();
+    license_plate = license_plate?.trim();
+
+    if (!make || !model || !license_plate || typeof year !== "number") {
+      res.status(400).json({ error: "Invalid or missing fields" });
+      return;
+    }
+
+    const vehicleResult = await db.query(
+      "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
+      [id]
+    );
+    const vehicle = vehicleResult.rows[0];
+
+    if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
+      res.status(404).json({ error: "Vehicle not found or access denied" });
+      return;
+    }
+
+    const now = getCurrentTime();
+    const updateQuery = `
+      UPDATE vehicle
+      SET make = $1, model = $2, year = $3, license_plate = $4, updated_at = $5
+      WHERE id = $6
+      RETURNING *;
+    `;
+
     try {
-      const now = getCurrentTime();
-
-      const updateQuery = `
-        UPDATE vehicle
-        SET make = $1,
-            model = $2,
-            year = $3,
-            license_plate = $4,
-            updated_at = $5
-        WHERE id = $6 AND deleted_at IS NULL
-        RETURNING *
-      `;
-
-      const values = [make.trim(), model.trim(), year, license_plate.trim(), now, id];
-
-      const result = await db.query(updateQuery, values);
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Vehicle not found or deleted" });
-      }
+      const result = await db.query(updateQuery, [
+        make,
+        model,
+        year,
+        license_plate,
+        now,
+        id,
+      ]);
 
       res.json(result.rows[0]);
     } catch (error) {
-      console.error("Error updating vehicle:", error);
-
       if (error.code === "23505") {
-        return res.status(400).json({ error: "Duplicate license plate" });
+        res.status(400).json({ error: "License plate already exists" });
+        return;
       }
-
-      res.status(500).json({ error: "Failed to update vehicle" });
+      throw error; // centralized error handler will catch this
     }
   },
 
   async delete(req, res) {
     const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid vehicle ID" });
-
-    try {
-      const now = getCurrentTime();
-
-      const deleteQuery = `
-        UPDATE vehicle
-        SET deleted_at = $1
-        WHERE id = $2 AND deleted_at IS NULL
-        RETURNING *
-      `;
-
-      const result = await db.query(deleteQuery, [now, id]);
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Vehicle not found or already deleted" });
-      }
-
-      res.sendStatus(204);
-    } catch (error) {
-      console.error("Error deleting vehicle:", error);
-      res.status(500).json({ error: "Failed to delete vehicle" });
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid vehicle ID" });
+      return;
     }
+
+    const vehicleResult = await db.query(
+      "SELECT * FROM vehicle WHERE id = $1 AND deleted_at IS NULL",
+      [id]
+    );
+    const vehicle = vehicleResult.rows[0];
+
+    if (!vehicle || !canAccessResource(req.user, vehicle.user_id)) {
+      res.status(404).json({ error: "Vehicle not found or access denied" });
+      return;
+    }
+
+    const now = getCurrentTime();
+
+    await db.query(
+      "UPDATE vehicle SET deleted_at = $1 WHERE id = $2",
+      [now, id]
+    );
+
+    res.status(204).send();
   },
 };
 
